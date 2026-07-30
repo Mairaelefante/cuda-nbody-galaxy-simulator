@@ -1,0 +1,5 @@
+#include"nbody.hpp"
+#include<iostream>
+#include<fstream>
+#include<chrono>
+int main(int c,char**v){try{if(c>1&&std::string(v[1])=="--benchmark"){std::ofstream o("benchmark.csv");o<<"particles,cpu_ms,gpu_ms,speedup\n";for(size_t n:{512,1024,2048,4096,8192}){auto g=galaxy(n,42);double gm=gpu_steps(g,20,.002f,.03f),cm=-1;if(n<=4096){auto p=galaxy(n,42);auto a=std::chrono::steady_clock::now();for(int i=0;i<20;i++)cpu_step(p,.002f,.03f);cm=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-a).count();}o<<n<<','<<cm<<','<<gm<<','<<(cm>0?cm/gm:-1)<<'\n';std::cout<<n<<" gpu_ms="<<gm<<" speedup="<<(cm>0?cm/gm:-1)<<'\n';}return 0;}size_t n=c>1?std::stoull(v[1]):10000;int steps=c>2?std::stoi(v[2]):100;std::string out=c>3?v[3]:"gpu.csv";auto p=galaxy(n,42);double ms=gpu_steps(p,steps,.002f,.03f);save(out,p);std::cout<<"gpu_ms="<<ms<<" wrote="<<out<<'\n';if(n<=4096&&steps<=20){auto q=galaxy(n,42);for(int i=0;i<steps;i++)cpu_step(q,.002f,.03f);std::cout<<"max_error="<<error(q,p)<<'\n';}}catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

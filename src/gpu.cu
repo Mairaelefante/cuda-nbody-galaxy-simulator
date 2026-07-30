@@ -1,0 +1,7 @@
+#include"nbody.hpp"
+#include<cuda_runtime.h>
+#include<stdexcept>
+#include<string>
+void ck(cudaError_t e,const char*s){if(e!=cudaSuccess)throw std::runtime_error(std::string(s)+": "+cudaGetErrorString(e));}
+__global__ void step(const P*in,P*out,int n,float dt,float soft2){extern __shared__ P tile[];int i=blockIdx.x*blockDim.x+threadIdx.x;if(i>=n)return;P me=in[i];float ax=0,ay=0,az=0;for(int base=0;base<n;base+=blockDim.x){int k=base+threadIdx.x;if(k<n)tile[threadIdx.x]=in[k];__syncthreads();int lim=min(blockDim.x,n-base);for(int j=0;j<lim;j++){int gj=base+j;if(gj==i)continue;float x=tile[j].x-me.x,y=tile[j].y-me.y,z=tile[j].z-me.z,d=x*x+y*y+z*z+soft2,inv=rsqrtf(d),s=tile[j].m*inv*inv*inv;ax+=x*s;ay+=y*s;az+=z*s;}__syncthreads();}me.vx+=ax*dt;me.vy+=ay*dt;me.vz+=az*dt;me.x+=me.vx*dt;me.y+=me.vy*dt;me.z+=me.vz*dt;out[i]=me;}
+double gpu_steps(std::vector<P>&p,int steps,float dt,float soft){size_t bytes=p.size()*sizeof(P);P*a,*b;ck(cudaMalloc(&a,bytes),"malloc");ck(cudaMalloc(&b,bytes),"malloc");ck(cudaMemcpy(a,p.data(),bytes,cudaMemcpyHostToDevice),"copy");cudaEvent_t s,e;cudaEventCreate(&s);cudaEventCreate(&e);int bs=256,gs=(p.size()+bs-1)/bs;cudaEventRecord(s);for(int k=0;k<steps;k++){step<<<gs,bs,bs*sizeof(P)>>>(a,b,(int)p.size(),dt,soft*soft);ck(cudaGetLastError(),"kernel");std::swap(a,b);}cudaEventRecord(e);cudaEventSynchronize(e);float ms;cudaEventElapsedTime(&ms,s,e);ck(cudaMemcpy(p.data(),a,bytes,cudaMemcpyDeviceToHost),"copy back");cudaFree(a);cudaFree(b);cudaEventDestroy(s);cudaEventDestroy(e);return ms;}
