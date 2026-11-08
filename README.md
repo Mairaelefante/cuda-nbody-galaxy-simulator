@@ -1,3 +1,11 @@
+![CUDA N-Body Galaxy Simulator](cover.svg)
+
+> **C++ / CUDA · Direct gravitational N-body simulation**
+
+**Focus:** GPU Computing · [Source and project files](./)
+
+---
+
 # CUDA N-Body Galaxy Simulator
 C++17/CUDA direct-summation gravitational simulation with a CPU reference implementation, tiled shared-memory CUDA kernel, validation and benchmarks.
 
